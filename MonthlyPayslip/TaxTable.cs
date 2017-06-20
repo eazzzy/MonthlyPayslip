@@ -9,7 +9,6 @@ namespace MonthlyPaySlip
   public class TaxTable
   {
     private const int MonthsInYear = 12;
-    private const int MinimumAnnualSalary = 1;
 
     public decimal Min { get; set; }
     public decimal Max { get; set; }
