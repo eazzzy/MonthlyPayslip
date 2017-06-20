@@ -3,7 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MonthlyPayslip
+[assembly: CLSCompliant(true)]
+namespace MonthlyPaySlip
 {
   public class TaxTable
   {
@@ -32,13 +33,13 @@ namespace MonthlyPayslip
       if (entry != null)
         return entry;
       else
-        throw new ArgumentOutOfRangeException("Could not find a tax entry matching the input salary");
+        throw new KeyNotFoundException("Could not find a tax entry matching the input salary");
     }
 
     private void ValidateTaxTableEntries()
     {
       if (TaxTableEntries == null)
-        throw new NullReferenceException("Tax table entries is null or has not been loaded");
+        throw new InvalidOperationException("Tax table entries is null or has not been loaded");
     }
 
     public IEnumerator<TaxTable> GetEnumerator()
@@ -48,20 +49,20 @@ namespace MonthlyPayslip
   }
 
   [TestFixture]
-  public class TaxTableTest
+  public static class TaxTableTest
   {
     [TestCase(1)]
     public static void TestTaxTableNotLoadedExceptionHandling(decimal annualSalary)
     {
       var taxTable = new TaxTable();
       
-      Assert.Throws<NullReferenceException>(() => taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary));
+      Assert.Throws<InvalidOperationException>(() => taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary));
     }
 
-    [TestCase(-1, 0)]
-    [TestCase(17995, 0)]
-    [TestCase(60050, 922)]
-    public static void TestTaxTableEntryNotFoundExceptionHandling(decimal annualSalary, decimal expectedIncomeTax)
+    [TestCase(-1)]
+    [TestCase(17995)]
+    [TestCase(60050)]
+    public static void TestTaxTableEntryNotFoundExceptionHandling(decimal annualSalary)
     {
       TaxTable taxTable = new TaxTable();
 
@@ -69,7 +70,7 @@ namespace MonthlyPayslip
 
       taxTable.TaxTableEntries = new List<TaxTable>() { taxTableEntries };
       
-      Assert.Throws<ArgumentOutOfRangeException>(() => taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary));
+      Assert.Throws<KeyNotFoundException>(() => taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary));
     }
 
     [TestCase(17995, 0)]

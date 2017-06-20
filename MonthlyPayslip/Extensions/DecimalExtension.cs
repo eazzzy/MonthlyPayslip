@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MonthlyPayslip
+namespace MonthlyPaySlip
 {
     public static class DecimalExtension
     {
