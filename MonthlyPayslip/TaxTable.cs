@@ -3,27 +3,25 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-[assembly: CLSCompliant(true)]
 namespace MonthlyPaySlip
 {
   public class TaxTable
   {
-    private const int MonthsInYear = 12;
+    readonly private IEnumerable<TaxTable> TaxTableEntries;
 
     public decimal Min { get; set; }
     public decimal Max { get; set; }
     public decimal Tax { get; set; }
     public decimal AdditionalCharge { get; set; }
-    public IEnumerable<TaxTable> TaxTableEntries { get; set; }
 
-    public decimal GetMonthlyIncomeTaxFromAnnualSalary(decimal annualSalary)
+    public TaxTable() { }
+
+    public TaxTable(IEnumerable<TaxTable> taxTableEntries)
     {
-      var entry = GetTaxTableEntryFromAnnualSalary(annualSalary);
-
-      return ((entry.Tax + (annualSalary - entry.Min) * entry.AdditionalCharge) / MonthsInYear).RoundToWholeNumber();
+      TaxTableEntries = taxTableEntries;
     }
 
-    internal TaxTable GetTaxTableEntryFromAnnualSalary(decimal annualSalary)
+    public TaxTable GetTaxTableEntryFromAnnualSalary(decimal annualSalary)
     {
       ValidateTaxTableEntries();
 
@@ -40,21 +38,34 @@ namespace MonthlyPaySlip
       if (TaxTableEntries == null)
         throw new InvalidOperationException("Tax table entries is null or has not been loaded");
     }
+  }
 
-    public IEnumerator<TaxTable> GetEnumerator()
+  public class PaySlipCalculator
+  {
+    private const int MonthsInYear = 12;
+
+    readonly private TaxTable TaxTableEntry;
+    public PaySlipCalculator() { }
+
+    public PaySlipCalculator(TaxTable taxTableEntry)
     {
-      return TaxTableEntries.GetEnumerator();
+      TaxTableEntry = taxTableEntry;
+    }
+
+    public decimal GetMonthlyIncomeTaxFromAnnualSalary(decimal annualSalary)
+    {
+       return ((TaxTableEntry.Tax + (annualSalary - TaxTableEntry.Min) * TaxTableEntry.AdditionalCharge) / MonthsInYear).RoundToWholeNumber();
     }
   }
 
   [TestFixture]
-  public static class TaxTableTest
+  public class TaxTableTest
   {
     [TestCase(1)]
     public static void TestTaxTableNotLoadedExceptionHandling(decimal annualSalary)
     {
       var taxTable = new TaxTable();
-      
+
       Assert.Throws<InvalidOperationException>(() => taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary));
     }
 
@@ -63,32 +74,11 @@ namespace MonthlyPaySlip
     [TestCase(60050)]
     public static void TestTaxTableEntryNotFoundExceptionHandling(decimal annualSalary)
     {
-      TaxTable taxTable = new TaxTable();
 
       var taxTableEntries = LoadTaxTableTestData().ElementAtOrDefault(3);
+      TaxTable taxTable = new TaxTable(new List<TaxTable>() { taxTableEntries });
 
-      taxTable.TaxTableEntries = new List<TaxTable>() { taxTableEntries };
-      
       Assert.Throws<KeyNotFoundException>(() => taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary));
-    }
-
-    [TestCase(17995, 0)]
-    [TestCase(18200, 0)]
-    [TestCase(18235, 1)]
-    [TestCase(25000, 108)]
-    [TestCase(60050, 922)]
-    [TestCase(85000, 1616)]
-    [TestCase(120000, 2696)]
-    [TestCase(190000, 4921)]
-    public static void TestTaxCalculationFromAnnualSalaryProducesExpectedOutcome(decimal annualSalary, decimal expectedIncomeTax)
-    {
-      TaxTable taxTable = new TaxTable();
-
-      taxTable.TaxTableEntries = LoadTaxTableTestData();
-
-      var incomeTax = taxTable.GetMonthlyIncomeTaxFromAnnualSalary(annualSalary);
-
-      Assert.AreEqual(expectedIncomeTax, incomeTax);
     }
 
     [TestCase(17995)]
@@ -101,16 +91,17 @@ namespace MonthlyPaySlip
     [TestCase(190000)]
     public static void TestTaxTableEntryFromAnnualSalaryHasExpectedOutcome(decimal annualSalary)
     {
-      TaxTable taxTable = new TaxTable();
 
-      taxTable.TaxTableEntries = LoadTaxTableTestData();
+      var taxTableEntries = LoadTaxTableTestData();
+
+      TaxTable taxTable = new TaxTable(taxTableEntries);
 
       var taxEntry = taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary);
 
       Assert.IsTrue(Enumerable.Range((int)taxEntry.Min, (int)(taxEntry.Max - taxEntry.Min) + 1).Contains((int)annualSalary));
     }
 
-    private static IEnumerable<TaxTable> LoadTaxTableTestData()
+    public static IEnumerable<TaxTable> LoadTaxTableTestData()
     {
       var taxEntries = new List<TaxTable>();
 
@@ -122,5 +113,34 @@ namespace MonthlyPaySlip
 
       return taxEntries;
     }
+  }
+
+  [TestFixture]
+  public class PaySlipCalculatorTest
+  {
+    [TestCase(17995, 0)]
+    [TestCase(18200, 0)]
+    [TestCase(18235, 1)]
+    [TestCase(25000, 108)]
+    [TestCase(60050, 922)]
+    [TestCase(85000, 1616)]
+    [TestCase(120000, 2696)]
+    [TestCase(190000, 4921)]
+    public static void TestPaySlipCalculatorFromAnnualSalaryProducesExpectedOutcome(decimal annualSalary, decimal expectedIncomeTax)
+    {
+
+      var taxTableEntries = TaxTableTest.LoadTaxTableTestData();
+
+      TaxTable taxTable = new TaxTable(taxTableEntries);
+
+      var taxEntry = taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary);
+
+      var payslipCalc = new PaySlipCalculator(taxEntry);
+
+      var incomeTax = payslipCalc.GetMonthlyIncomeTaxFromAnnualSalary(annualSalary);
+
+      Assert.AreEqual(expectedIncomeTax, incomeTax);
+    }
+
   }
 }
