@@ -44,17 +44,25 @@ namespace MonthlyPaySlip
   {
     private const int MonthsInYear = 12;
 
-    readonly private TaxTable TaxTableEntry;
-    public PaySlipCalculator() { }
-
-    public PaySlipCalculator(TaxTable taxTableEntry)
+    public decimal CalculateIncomeTaxFromAnnualSalary(decimal annualSalary, TaxTable taxTableEntry)
     {
-      TaxTableEntry = taxTableEntry;
+       return ((taxTableEntry.Tax + (annualSalary - taxTableEntry.Min) * taxTableEntry.AdditionalCharge) / MonthsInYear).RoundToWholeNumber();
     }
+  }
 
-    public decimal GetMonthlyIncomeTaxFromAnnualSalary(decimal annualSalary)
+  public static class Utilities
+  {
+    public static IEnumerable<TaxTable> LoadTaxTableTestData()
     {
-       return ((TaxTableEntry.Tax + (annualSalary - TaxTableEntry.Min) * TaxTableEntry.AdditionalCharge) / MonthsInYear).RoundToWholeNumber();
+      var taxEntries = new List<TaxTable>();
+
+      taxEntries.Add(new TaxTable() { Min = 0, Max = 18200, Tax = 0, AdditionalCharge = 0 });
+      taxEntries.Add(new TaxTable() { Min = 18201, Max = 37000, Tax = 0, AdditionalCharge = (decimal)0.19 });
+      taxEntries.Add(new TaxTable() { Min = 37001, Max = 80000, Tax = 3572, AdditionalCharge = (decimal)0.325 });
+      taxEntries.Add(new TaxTable() { Min = 80001, Max = 180000, Tax = 17547, AdditionalCharge = (decimal)0.37 });
+      taxEntries.Add(new TaxTable() { Min = 180001, Max = 2147483647, Tax = 54547, AdditionalCharge = (decimal)0.45 });
+
+      return taxEntries;
     }
   }
 
@@ -75,7 +83,7 @@ namespace MonthlyPaySlip
     public static void TestTaxTableEntryNotFoundExceptionHandling(decimal annualSalary)
     {
 
-      var taxTableEntries = LoadTaxTableTestData().ElementAtOrDefault(3);
+      var taxTableEntries = Utilities.LoadTaxTableTestData().ElementAtOrDefault(3);
       TaxTable taxTable = new TaxTable(new List<TaxTable>() { taxTableEntries });
 
       Assert.Throws<KeyNotFoundException>(() => taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary));
@@ -92,26 +100,13 @@ namespace MonthlyPaySlip
     public static void TestTaxTableEntryFromAnnualSalaryHasExpectedOutcome(decimal annualSalary)
     {
 
-      var taxTableEntries = LoadTaxTableTestData();
+      var taxTableEntries = Utilities.LoadTaxTableTestData();
 
       TaxTable taxTable = new TaxTable(taxTableEntries);
 
       var taxEntry = taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary);
 
       Assert.IsTrue(Enumerable.Range((int)taxEntry.Min, (int)(taxEntry.Max - taxEntry.Min) + 1).Contains((int)annualSalary));
-    }
-
-    public static IEnumerable<TaxTable> LoadTaxTableTestData()
-    {
-      var taxEntries = new List<TaxTable>();
-
-      taxEntries.Add(new TaxTable() { Min = 0, Max = 18200, Tax = 0, AdditionalCharge = 0 });
-      taxEntries.Add(new TaxTable() { Min = 18201, Max = 37000, Tax = 0, AdditionalCharge = (decimal)0.19 });
-      taxEntries.Add(new TaxTable() { Min = 37001, Max = 80000, Tax = 3572, AdditionalCharge = (decimal)0.325 });
-      taxEntries.Add(new TaxTable() { Min = 80001, Max = 180000, Tax = 17547, AdditionalCharge = (decimal)0.37 });
-      taxEntries.Add(new TaxTable() { Min = 180001, Max = 2147483647, Tax = 54547, AdditionalCharge = (decimal)0.45 });
-
-      return taxEntries;
     }
   }
 
@@ -129,18 +124,17 @@ namespace MonthlyPaySlip
     public static void TestPaySlipCalculatorFromAnnualSalaryProducesExpectedOutcome(decimal annualSalary, decimal expectedIncomeTax)
     {
 
-      var taxTableEntries = TaxTableTest.LoadTaxTableTestData();
+      var taxTableEntries = Utilities.LoadTaxTableTestData();
 
       TaxTable taxTable = new TaxTable(taxTableEntries);
 
       var taxEntry = taxTable.GetTaxTableEntryFromAnnualSalary(annualSalary);
 
-      var payslipCalc = new PaySlipCalculator(taxEntry);
+      var payslipCalc = new PaySlipCalculator();
 
-      var incomeTax = payslipCalc.GetMonthlyIncomeTaxFromAnnualSalary(annualSalary);
+      var incomeTax = payslipCalc.CalculateIncomeTaxFromAnnualSalary(annualSalary, taxEntry);
 
       Assert.AreEqual(expectedIncomeTax, incomeTax);
     }
-
   }
 }
