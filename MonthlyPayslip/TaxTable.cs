@@ -47,7 +47,7 @@ namespace MonthlyPaySlip
     public decimal CalculateIncomeTaxFromAnnualSalary(decimal annualSalary, TaxTable taxTableEntry)
     {
       if (taxTableEntry == null)
-        throw new ArgumentNullException("Tax table entry is null");
+        throw new ArgumentNullException("taxTableEntry", "Tax table entry is null");
 
       return ((taxTableEntry.Tax + (annualSalary - taxTableEntry.Min) * taxTableEntry.AdditionalCharge) / MonthsInYear).RoundToWholeNumber();
     }
@@ -117,13 +117,13 @@ namespace MonthlyPaySlip
   public class PaySlipCalculatorTest
   {
     [TestCase(1)]
-    public static void TestPayslipCalculatorTaxTableEntryNotLoadedExceptionHandling(decimal annualSalary)
+    public static void TestPaySlipCalculatorTaxTableEntryNotLoadedExceptionHandling(decimal annualSalary)
     {
       var payslipCalc = new PaySlipCalculator();
 
       Assert.Throws<ArgumentNullException>(() => payslipCalc.CalculateIncomeTaxFromAnnualSalary(annualSalary, null));
     }
-
+          
     [TestCase(17995, 0)]
     [TestCase(18200, 0)]
     [TestCase(18235, 1)]
